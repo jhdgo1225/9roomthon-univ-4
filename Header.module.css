@@ -1,0 +1,16 @@
+.header {
+    display: flex;
+    width: 100vw;
+    background: #050f18;
+    @media (max-width: 480px) {
+        flex-direction: column;
+        align-items: stretch;
+        height: 120px;
+    }
+}
+
+.header > * {
+	@media (max-width: 480px) {
+		flex: 1;
+	}
+}
