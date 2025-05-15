@@ -37,11 +37,6 @@ globalStyle("body", {
     background: themeContract.background,
     color: themeContract.foreground,
     fontFamily: themeContract.fontSans,
-    "@media": {
-        "(min-width: 768px)": {
-            display: "none",
-        },
-    },
 });
 
 globalStyle("*", {
@@ -52,4 +47,14 @@ globalStyle("*", {
 
 globalStyle("button", {
     cursor: "pointer",
+});
+
+globalStyle("img", {
+    "&": {
+        WebkitUserDrag: "none", // -webkit-user-drag
+        KhtmlUserDrag: "none", // -khtml-user-drag
+        MozUserDrag: "none", // -moz-user-drag
+        OUserDrag: "none", // -o-user-drag
+        userDrag: "none", // user-drag
+    },
 });

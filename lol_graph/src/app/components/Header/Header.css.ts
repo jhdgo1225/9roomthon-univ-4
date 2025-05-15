@@ -3,7 +3,7 @@ import { style, StyleRule } from "@vanilla-extract/css";
 export const header = style({
     display: "flex",
     width: "100vw",
-    background: "#050f18",
+    background: "#001620",
     "@media": {
         "(max-width: 634px)": {
             flexDirection: "column",

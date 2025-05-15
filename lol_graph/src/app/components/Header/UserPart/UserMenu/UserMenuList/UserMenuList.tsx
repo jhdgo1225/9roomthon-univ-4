@@ -1,31 +1,6 @@
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { userMenuList, userMenuListItem } from "./UserMenuList.css";
-
-type WindowSize = { width?: number };
-
-function useWindowSize(): WindowSize {
-    const [windowSize, setWindowSize] = useState<WindowSize>({
-        width: undefined,
-    });
-
-    useEffect(() => {
-        // 클라이언트 사이드에서만 실행
-        if (typeof window === "undefined") return;
-
-        const handleResize = () => {
-            setWindowSize({ width: window.innerWidth });
-        };
-
-        // 초기값 설정
-        handleResize();
-
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
-
-    return windowSize;
-}
+import useWindowSize from "@/app/hooks/useWindowSize";
 
 function UserMenuListItem({
     item,
@@ -71,7 +46,7 @@ export default function UserMenuList({ show }: { show: boolean }) {
                     windowSize === undefined
                         ? "none" // 초기 렌더링 시에는 숨김
                         : (windowSize >= 491 && windowSize <= 634) ||
-                          windowSize > 720 ||
+                          windowSize > 1024 ||
                           show
                         ? "flex"
                         : "none",

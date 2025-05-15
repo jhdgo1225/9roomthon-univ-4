@@ -11,6 +11,7 @@ export const userMenuList = style({
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    zIndex: "1",
     "@media": {
         "(max-width: 490px)": {
             position: "absolute",
@@ -20,12 +21,16 @@ export const userMenuList = style({
             // height: "auto",
             background: "#23282d",
         },
-        "(min-width: 635px) and (max-width: 720px)": {
+        "(min-width: 635px) and (max-width: 1024px)": {
             position: "absolute",
             bottom: "-30px",
             right: "9px",
             width: "200px",
             background: "#23282d",
+        },
+        "(min-width: 1025px)": {
+            width: "220px",
+            marginRight: "8px",
         },
     },
 });

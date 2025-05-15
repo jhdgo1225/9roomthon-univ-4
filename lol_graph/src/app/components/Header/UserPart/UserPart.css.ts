@@ -6,6 +6,9 @@ export const userPart = style({
     "@media": {
         "(max-width: 634px)": {
             justifyContent: "space-between"
+        },
+        "(min-width: 635px)": {
+            flexDirection: "row-reverse"
         }
     },
 });

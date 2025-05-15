@@ -9,7 +9,7 @@ export const userMenuBtn = style({
     border: "1px solid #c9b77c",
     "@media": {
         "(min-width: 491px) and (max-width: 634px)": { display: "none" },
-        "(min-width: 720px)": {
+        "(min-width: 1025px)": {
             display: "none",
         },
     },
