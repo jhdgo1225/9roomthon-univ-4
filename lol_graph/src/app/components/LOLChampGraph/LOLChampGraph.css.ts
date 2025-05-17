@@ -1,5 +1,6 @@
-// import { style } from "@vanilla-extract/css";
+import { style } from "@vanilla-extract/css";
 
-// export const lolChampGraph = style({
-// 	backgroundImage: url("@/public/image/background.png")
-// })
+export const lolChampGraph = style({
+    display: "flex",
+	flexDirection: "row-reverse",
+});

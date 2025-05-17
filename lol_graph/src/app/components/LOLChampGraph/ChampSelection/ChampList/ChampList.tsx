@@ -1,5 +1,56 @@
-export default function ChampList() {
-    return <div>
-        
-    </div>;
+// import Image from "next/image";
+import { champList, champListItem } from "./ChampList.css";
+import { MouseEvent } from "react";
+
+interface ChampionRelation {
+    [key: string]: string;
+}
+
+interface ChampionData {
+    image: string;
+    relation: ChampionRelation;
+}
+
+interface ChampListItemProps {
+    id: string;
+    children: string;
+    image: string;
+    onClick: (event: MouseEvent<HTMLDivElement>) => void;
+}
+
+function ChampListItem({ id, children, image, onClick }: ChampListItemProps) {
+    return (
+        <div
+            key={id}
+            onClick={onClick}
+            className={champListItem}
+            style={
+                {
+                    "--champ-image": `url(/image/champs/${image})`,
+                } as React.CSSProperties
+            }>
+            <h1>{children}</h1>
+        </div>
+    );
+}
+
+interface ChampListProps {
+    champ: Map<string, ChampionData>;
+    clickHandler: (event: MouseEvent<HTMLDivElement>) => void;
+}
+
+export default function ChampList({ champ, clickHandler }: ChampListProps) {
+    return (
+        <div className={champList}>
+            {Array.from(champ.keys()).map((value) => (
+                <ChampListItem
+                    key={value}
+                    id={value}
+                    onClick={clickHandler}
+                    image={champ.get(value)?.image || ""}>
+                    {value}
+                </ChampListItem>
+            ))}
+        </div>
+    );
 }

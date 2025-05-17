@@ -1,23 +1,26 @@
 import Image from "next/image";
 import LOLChampGraphTitle from "../LOLChampGraphTitle/LOLChampGraphTitle";
 import RealGraphView from "./RealGraphView/RealGraphView";
-import {graphView, content} from "./GraphView.css";
+import { graphView, content } from "./GraphView.css";
 
-export default function GraphView() {
+interface GraphViewProps {
+    champion: string;
+}
+
+export default function GraphView({ champion }: GraphViewProps) {
     return (
         <div className={graphView}>
-			<Image
+            <Image
                 src="/image/background.png"
                 alt="lol background"
-                layout="fill"
-                objectFit="cover"
-                objectPosition="center"
-				priority
+                fill
+                style={{ objectFit: "cover" }}
+                priority
             />
-			<div className={content}>
-				<LOLChampGraphTitle />
-				<RealGraphView />
-			</div>
+            <div className={content}>
+                <LOLChampGraphTitle />
+                <RealGraphView champion={champion} />
+            </div>
         </div>
     );
 }

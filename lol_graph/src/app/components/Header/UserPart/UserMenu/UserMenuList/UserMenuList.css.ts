@@ -18,7 +18,6 @@ export const userMenuList = style({
             bottom: "-30px",
             right: "9px",
             width: "200px",
-            // height: "auto",
             background: "#23282d",
         },
         "(min-width: 635px) and (max-width: 1024px)": {
