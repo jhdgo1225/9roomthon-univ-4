@@ -19,6 +19,7 @@ interface ChampListItemProps {
 }
 
 function ChampListItem({ id, children, image, onClick }: ChampListItemProps) {
+    const realImage = (!image?.length) ? "default.jpg" : image;
     return (
         <div
             key={id}
@@ -26,7 +27,7 @@ function ChampListItem({ id, children, image, onClick }: ChampListItemProps) {
             className={champListItem}
             style={
                 {
-                    "--champ-image": `url(/image/champs/${image})`,
+                    "--champ-image": `url(/image/champs/${realImage})`,
                 } as React.CSSProperties
             }>
             <h1>{children}</h1>
