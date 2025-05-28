@@ -3,7 +3,7 @@ import { style } from "@vanilla-extract/css";
 export const graphView = style({
     position: "relative",
     width: "100%",
-    height: "min(100vh)",
+    height: "100vh",
 });
 
 export const content = style({

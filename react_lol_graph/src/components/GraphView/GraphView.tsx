@@ -1,5 +1,3 @@
-"use client";
-
 import LOLChampGraphTitle from "../LOLChampGraphTitle/LOLChampGraphTitle";
 import RealGraphView from "../RealGraphView/RealGraphView";
 import { graphView, content } from "./GraphView.css";
@@ -16,7 +14,6 @@ export default function GraphView({ champ, champion }: GraphViewProps) {
             setDimensions({ width, height });
         }
     }, [graphViewRef]);
-    console.log(dimensions);
     return (
         <div className={graphView}>
             <img
