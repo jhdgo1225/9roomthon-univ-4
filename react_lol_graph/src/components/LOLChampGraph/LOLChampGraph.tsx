@@ -29,7 +29,7 @@ export default function LOLChampGraph() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const res = await fetch("/json/champs.json");
+                const res = await fetch("/json/newchamps.json");
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
                 }

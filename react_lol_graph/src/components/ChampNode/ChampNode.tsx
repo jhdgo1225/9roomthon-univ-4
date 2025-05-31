@@ -5,22 +5,27 @@ import { champNode, champNodeImg } from "./ChampNode.css";
 import { showAnimation } from "../RealGraphView/RealGraphView.css";
 
 interface ChampNodeType {
+    index: number;
     ref: Ref<HTMLDivElement>;
     champ: Map<string, ChampionData>;
     champion: string;
     nodeCoords: Coordinates;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
 }
 
 export default function ChampNode({
+    index,
     ref,
     champ,
     champion,
     nodeCoords,
+    onMouseEnter,
+    onMouseLeave,
 }: ChampNodeType) {
     const [isLoaded, setIsLoaded] = useState(false);
     const renderingChampImg =
         champion === "" || champ.get(champion)?.image || "default.jpg";
-
     return (
         <div
             ref={ref}
@@ -33,7 +38,9 @@ export default function ChampNode({
                 opacity: isLoaded ? 1 : 0,
                 transition:
                     "left 0.5s linear, top 0.5s linear, opacity 0.2s ease-in-out",
-            }}>
+            }}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}>
             <img
                 src={`/image/champs/${renderingChampImg}`}
                 alt={champion}
