@@ -4,390 +4,303 @@ import type { GraphViewProps, Coordinates } from "../../types/champion";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 function calcCoords(
-    championLength: number | 1,
-    graphView: HTMLDivElement | null
+  championLength: number,
+  graphView: HTMLDivElement | null
 ): Coordinates[] {
-    const newCoords: Coordinates[] = [];
-    const graphViewOffsetWidth = graphView?.offsetWidth || 0;
-    const graphViewOffsetHeight = graphView?.offsetHeight || 0;
-    newCoords.push({ x: graphViewOffsetWidth / 2, y: 10 });
-    for (let i = 1; i < championLength; i++) {
-        let nextX = Math.random() * graphViewOffsetWidth;
-        let nextY: number = newCoords[i - 1].y + 70;
-        if (nextX >= graphViewOffsetWidth - 62)
-            nextX = graphViewOffsetWidth - 62;
-        if (nextX <= 20) nextX = 20;
-        if (nextY >= graphViewOffsetHeight - 52) nextY = 15;
-        if (
-            nextX >= newCoords[i - 1].x - 42 &&
-            nextX <= newCoords[i - 1].x + 42
-        ) {
-            const tmpNextX1 = newCoords[i - 1].x - 62;
-            const tmpNextX2 = newCoords[i - 1].x + 62;
-            if (tmpNextX1 <= 20) nextX = tmpNextX2;
-            else if (tmpNextX2 >= graphViewOffsetHeight - 62) nextX = tmpNextX1;
-        }
-        const coord: Coordinates = { x: nextX, y: nextY };
-        newCoords.push(coord);
+  const newCoords: Coordinates[] = [];
+  const w = graphView?.offsetWidth || 0;
+  const h = graphView?.offsetHeight || 0;
+  // 가운데 위쪽에서 시작
+  newCoords.push({ x: w / 2, y: 10 });
+  for (let i = 1; i < championLength; i++) {
+    let nextX = Math.random() * w;
+    let nextY = newCoords[i - 1].y + 70;
+    const nodeSize = 80;
+    // 화면 밖으로 안 나가도록 clamp
+    nextX = Math.max(20, Math.min(nextX, w - nodeSize - 20));
+    nextY = Math.min(nextY, h - nodeSize - 20);
+    // 직전 노드와 너무 겹치지 않게 약간 좌우로 밀기
+    if (
+      Math.abs(nextX - newCoords[i - 1].x) <= 42
+    ) {
+      const left   = newCoords[i - 1].x - 62;
+      const right  = newCoords[i - 1].x + 62;
+      if (left <= 20)         nextX = right;
+      else if (right >= w - nodeSize - 20) nextX = left;
+      else nextX = right;
     }
-    return newCoords;
+    newCoords.push({ x: nextX, y: nextY });
+  }
+  return newCoords;
 }
 
 export default function RealGraphView({ champ, champion }: GraphViewProps) {
-    const graphViewRef = useRef<HTMLDivElement>(null);
-    const champNodeRef = useRef<HTMLDivElement>(null);
-    const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const [champNodesCoords, setChampNodesCoords] = useState<Coordinates[]>([]);
-    const [nodesVelocity, setNodesVelocity] = useState<Coordinates[]>([]);
-    const [graphViewWidth, setGraphViewWidth] = useState<number>(0);
-    const [champEdges, setChampEdges] = useState<Record<number, string>[]>([]);
-    const [hoveredChampion, setHoveredChampion] = useState<string>("");
+  const graphViewRef = useRef<HTMLDivElement>(null);
+  const champNodeRef = useRef<HTMLDivElement>(null);
+  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    const moveAnywhere = useCallback(() => {
-        setChampNodesCoords((prevCoords) => {
-            if (nodesVelocity.length === 0) return prevCoords;
+  // 좌표 / 속도 / 엣지 / 호버 상태 등
+  const [champNodesCoords, setChampNodesCoords] = useState<Coordinates[]>([]);
+  const [nodesVelocity, setNodesVelocity] = useState<Coordinates[]>([]);
+  const [graphViewWidth, setGraphViewWidth] = useState<number>(0);
+  const [champEdges, setChampEdges] = useState<Record<number, string>[]>([]);
+  const [hoveredChampion, setHoveredChampion] = useState<number>(-1);
 
-            return prevCoords.map((value: Coordinates, index: number) => {
-                let nextX = value.x + nodesVelocity[index].x;
-                let nextY = value.y + nodesVelocity[index].y;
-                const graphView = graphViewRef.current;
-                if (graphView) {
-                    const nodeSize = 80;
-                    const padding = 10;
-                    const minX = padding;
-                    const maxX = graphView.offsetWidth - nodeSize - padding;
-                    const minY = padding;
-                    const maxY = graphView.offsetHeight - nodeSize - padding;
+  // 노드를 움직이는 애니메이션 함수
+  const moveAnywhere = useCallback(() => {
+    setChampNodesCoords((prevCoords) => {
+      if (nodesVelocity.length === 0) return prevCoords;
 
-                    if (nextX < minX || nextX > maxX) {
-                        nextX = value.x - nodesVelocity[index].x;
-                    }
-                    if (nextY < minY || nextY > maxY) {
-                        nextY = value.y - nodesVelocity[index].y;
-                    }
-                }
-                return { x: nextX, y: nextY };
-            });
-        });
-    }, [nodesVelocity, graphViewRef]);
-
-    const changeVelocity = useCallback(() => {
-        setNodesVelocity((prevVelocity) => {
-            const newVelocity = Array(prevVelocity.length)
-                .fill(null)
-                .map(() => ({
-                    x: Math.random() * 8 - 4,
-                    y: Math.random() * 8 - 4,
-                }));
-            return newVelocity;
-        });
-    }, []);
-
-    // 초기 데이터 설정 및 애니메이션 시작
-    useEffect(() => {
+      return prevCoords.map((coord, idx) => {
+        let nextX = coord.x + nodesVelocity[idx].x;
+        let nextY = coord.y + nodesVelocity[idx].y;
         const graphView = graphViewRef.current;
-        if (!graphView) return;
-
-        const graphChamps = champ?.get(champion)?.relation || {};
-        const graphChampsLength = Object.keys(graphChamps)?.length || 0;
-
-        // 초기 좌표 설정 (데이터 로드 시 한 번만)
-        if (champNodesCoords.length === 0 && graphChampsLength > 0) {
-            const initialCoords = calcCoords(graphChampsLength + 1, graphView);
-            setChampNodesCoords(initialCoords);
-
-            // 초기 속도 설정 (데이터 로드 시 한 번만)
-            const initialVelocity = Array(graphChampsLength + 1)
-                .fill(null)
-                .map(() => ({
-                    x: Math.random() * 8 - 4,
-                    y: Math.random() * 8 - 4,
-                }));
-            setNodesVelocity(initialVelocity);
-
-            // 엣지 설정 (데이터 로드 시 한 번만)
-            const champToIdx: Record<string, number> = {};
-            champToIdx[champion] = 0;
-            Object.keys(graphChamps).forEach((value: string, index: number) => {
-                champToIdx[value] = index + 1;
-            });
-
-            const edges = Object.keys(champToIdx).map((value) => {
-                const champRelations = champ?.get(value)?.relation || {};
-                const champToChamps: Record<number, string> = {};
-                Object.keys(champRelations).forEach((value) => {
-                    const idx = champToIdx[value];
-                    if (idx !== undefined) {
-                        champToChamps[idx] = champRelations[value];
-                    }
-                });
-                return champToChamps;
-            });
-
-            setChampEdges(edges);
+        if (graphView) {
+          const nodeSize = 80;
+          const padding = 10;
+          const minX = padding;
+          const maxX = graphView.offsetWidth - nodeSize - padding;
+          const minY = padding;
+          const maxY = graphView.offsetHeight - nodeSize - padding;
+          if (nextX < minX || nextX > maxX) {
+            nextX = coord.x - nodesVelocity[idx].x;
+          }
+          if (nextY < minY || nextY > maxY) {
+            nextY = coord.y - nodesVelocity[idx].y;
+          }
         }
+        return { x: nextX, y: nextY };
+      });
+    });
+  }, [nodesVelocity]);
 
-        // 노드 좌표와 속도가 설정되면 애니메이션 시작
-        if (
-            champNodesCoords.length > 0 &&
-            nodesVelocity.length > 0 &&
-            !hoveredChampion &&
-            !animationIntervalRef.current
-        ) {
-            animationIntervalRef.current = setInterval(() => {
-                moveAnywhere(); // 먼저 위치 업데이트
-                changeVelocity(); // 그 다음 속도 변경 (랜덤하게 튀는 움직임)
-            }, 100); // 간격 조정 (랜덤 움직임이 너무 빠르지 않게)
-        }
-
-        // 컴포넌트 언마운트 또는 의존성 변경 시 애니메이션 정리
-        return () => {
-            if (animationIntervalRef.current) {
-                clearInterval(animationIntervalRef.current);
-                animationIntervalRef.current = null;
-            }
-        };
-    }, [
-        champ,
-        champion,
-        graphViewWidth,
-        champNodesCoords.length,
-        nodesVelocity.length,
-        hoveredChampion,
-        moveAnywhere,
-        changeVelocity,
-    ]);
-
-    const handleMouseEnter = useCallback((champion: string) => {
-        // 모든 노드의 움직임을 멈춤
-        if (animationIntervalRef.current) {
-            clearInterval(animationIntervalRef.current);
-            animationIntervalRef.current = null;
-        }
-        setHoveredChampion(champion);
-    }, []);
-
-    const handleMouseLeave = useCallback(() => {
-        setHoveredChampion("");
-        // 마우스가 벗어나면 다시 움직임 시작
-        // 데이터가 로드된 상태에서만 애니메이션 시작
-        if (
-            champNodesCoords.length > 0 &&
-            nodesVelocity.length > 0 &&
-            !animationIntervalRef.current
-        ) {
-            animationIntervalRef.current = setInterval(() => {
-                moveAnywhere();
-                changeVelocity();
-            }, 100); // 간격 조정
-        }
-    }, [
-        champNodesCoords.length,
-        nodesVelocity.length,
-        moveAnywhere,
-        changeVelocity,
-    ]);
-
-    // 리사이즈 처리
-    useEffect(() => {
-        const graphView = graphViewRef.current;
-        if (!graphView) return;
-
-        setGraphViewWidth(graphView.offsetWidth);
-
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                setGraphViewWidth(entry.contentRect.width);
-            }
-        });
-
-        resizeObserver.observe(graphView);
-
-        return () => {
-            resizeObserver.disconnect();
-        };
-    }, []);
-
-    const drawEdges = useCallback(() => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        const graphView = graphViewRef.current;
-        if (!ctx || !graphView || champNodesCoords.length === 0) return; // Draw only if nodes data is available
-
-        canvas.width = graphView.offsetWidth;
-        canvas.height = graphView.offsetHeight;
-        canvas.style.position = "absolute";
-        canvas.style.top = "0";
-        canvas.style.left = "0";
-        canvas.style.zIndex = "-1";
-        canvas.style.pointerEvents = "none";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 노드 중앙을 기준으로 간선 그리기
-        const nodeSize = 80; // ChampNode의 크기를 80x80으로 가정
-        const nodeCenterOffset = nodeSize / 2;
-
-        if (hoveredChampion) {
-            const graphChamps = champ?.get(champion)?.relation || {};
-            const champToIdx: Record<string, number> = {};
-            champToIdx[champion] = 0;
-            Object.keys(graphChamps).forEach((value: string, index: number) => {
-                champToIdx[value] = index + 1;
-            });
-
-            const hoveredIndex = champToIdx[hoveredChampion];
-
-            if (hoveredIndex !== undefined && champEdges[hoveredIndex]) {
-                // Check if champEdges[hoveredIndex] exists
-                // 호버된 챔피언에서 다른 챔피언으로 가는 간선
-                Object.keys(champEdges[hoveredIndex]).forEach(
-                    (targetIndexStr) => {
-                        const targetIndex = parseInt(targetIndexStr);
-                        const startCoord = champNodesCoords[hoveredIndex];
-                        const targetCoord = champNodesCoords[targetIndex];
-
-                        if (startCoord && targetCoord) {
-                            ctx.beginPath();
-                            // 시작 좌표를 노드 중앙으로 설정
-                            ctx.moveTo(
-                                startCoord.x + nodeCenterOffset,
-                                startCoord.y + nodeCenterOffset
-                            );
-                            // 끝 좌표를 대상 노드 중앙으로 설정
-                            ctx.lineTo(
-                                targetCoord.x + nodeCenterOffset,
-                                targetCoord.y + nodeCenterOffset
-                            );
-                            ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-                            ctx.lineWidth = 2;
-                            ctx.stroke();
-
-                            const text = champEdges[hoveredIndex][targetIndex];
-                            if (text) {
-                                ctx.font = "12px Arial";
-                                const textWidth = ctx.measureText(text).width;
-                                const padding = 4;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                                ctx.fillRect(
-                                    targetCoord.x +
-                                        nodeCenterOffset -
-                                        textWidth / 2 -
-                                        padding,
-                                    targetCoord.y + nodeCenterOffset - 35, // 텍스트 위치 조정
-                                    textWidth + padding * 2,
-                                    20
-                                );
-                                ctx.fillStyle = "white";
-                                ctx.textAlign = "center";
-                                ctx.fillText(
-                                    text,
-                                    targetCoord.x + nodeCenterOffset,
-                                    targetCoord.y + nodeCenterOffset - 20
-                                ); // 텍스트 위치 조정
-                            }
-                        }
-                    }
-                );
-
-                // 다른 챔피언에서 호버된 챔피언으로 오는 간선
-                Object.keys(champToIdx).forEach((otherChampName) => {
-                    const otherIndex = champToIdx[otherChampName];
-                    if (
-                        otherIndex !== hoveredIndex &&
-                        champNodesCoords[otherIndex]
-                    ) {
-                        // Check if otherIndex is valid and coords exist
-                        const otherChampRelations =
-                            champ?.get(otherChampName)?.relation || {};
-                        if (otherChampRelations[hoveredChampion]) {
-                            const startCoord = champNodesCoords[otherIndex];
-                            const targetCoord = champNodesCoords[hoveredIndex];
-                            const relationText =
-                                otherChampRelations[hoveredChampion];
-
-                            if (startCoord && targetCoord) {
-                                ctx.beginPath();
-                                // 시작 좌표를 노드 중앙으로 설정
-                                ctx.moveTo(
-                                    startCoord.x + nodeCenterOffset,
-                                    startCoord.y + nodeCenterOffset
-                                );
-                                // 끝 좌표를 호버된 노드 중앙으로 설정
-                                ctx.lineTo(
-                                    targetCoord.x + nodeCenterOffset,
-                                    targetCoord.y + nodeCenterOffset
-                                );
-                                ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
-                                ctx.lineWidth = 2;
-                                ctx.stroke();
-
-                                ctx.font = "12px Arial";
-                                const textWidth =
-                                    ctx.measureText(relationText).width;
-                                const padding = 4;
-                                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-                                ctx.fillRect(
-                                    targetCoord.x +
-                                        nodeCenterOffset -
-                                        textWidth / 2 -
-                                        padding,
-                                    targetCoord.y + nodeCenterOffset + 15, // 텍스트 위치 조정
-                                    textWidth + padding * 2,
-                                    20
-                                );
-                                ctx.fillStyle = "white";
-                                ctx.textAlign = "center";
-                                ctx.fillText(
-                                    relationText,
-                                    targetCoord.x + nodeCenterOffset,
-                                    targetCoord.y + nodeCenterOffset + 30
-                                ); // 텍스트 위치 조정
-                            }
-                        }
-                    }
-                });
-            }
-        }
-
-        return canvas;
-    }, [champNodesCoords, champEdges, hoveredChampion, champion, champ]);
-
-    useEffect(() => {
-        const canvas = drawEdges();
-        if (canvas && graphViewRef.current) {
-            const existingCanvas = graphViewRef.current.querySelector("canvas");
-            if (existingCanvas) {
-                existingCanvas.remove();
-            }
-            graphViewRef.current.appendChild(canvas);
-        }
-    }, [drawEdges]);
-
-    return (
-        <div ref={graphViewRef} className={realGraphView}>
-            <ChampNode
-                index={0}
-                ref={champNodeRef}
-                champ={champ}
-                champion={champion}
-                nodeCoords={champNodesCoords[0]}
-                onMouseEnter={() => handleMouseEnter(champion)}
-                onMouseLeave={handleMouseLeave}
-            />
-            {Object.keys(champ?.get(champion)?.relation || {})?.map(
-                (relChampion, index) => (
-                    <ChampNode
-                        key={index + 1}
-                        index={index + 1}
-                        ref={champNodeRef}
-                        champ={champ}
-                        champion={relChampion}
-                        nodeCoords={champNodesCoords[index + 1]}
-                        onMouseEnter={() => handleMouseEnter(relChampion)}
-                        onMouseLeave={handleMouseLeave}
-                    />
-                )
-            )}
-        </div>
+  // 주기적으로 속도 바꾸는 함수
+  const changeVelocity = useCallback(() => {
+    setNodesVelocity((prev) =>
+      prev.map(() => ({ x: Math.random() * 8 - 4, y: Math.random() * 8 - 4 }))
     );
+  }, []);
+
+  // ──────────────▶  [A] 챔피언이 바뀔 때마다(= champion prop이 바뀔 때마다) “엣지 & 좌표 & 속도”를 **새로** 세팅
+  useEffect(() => {
+    const graphView = graphViewRef.current;
+    if (!graphView) return;
+
+    // 1) 새로 선택된 champion의 relation 정보
+    const graphChamps = champ.get(champion)?.relation || {};
+    const totalNodes = Object.keys(graphChamps).length + 1; // 자기 자신 + relation
+
+    // 2) 좌표 초기화
+    const initialCoords = calcCoords(totalNodes, graphView);
+    setChampNodesCoords(initialCoords);
+
+    // 3) 속도 초기화
+    const initialVelocity = Array(totalNodes)
+      .fill(null)
+      .map(() => ({ x: Math.random() * 8 - 4, y: Math.random() * 8 - 4 }));
+    setNodesVelocity(initialVelocity);
+
+    // 4) 엣지 계산
+    //   champToIdx: { [챔피언이름]: index-in-array } 꼴로 map
+    const champToIdx: Record<string, number> = {};
+    champToIdx[champion] = 0;
+    Object.keys(graphChamps).forEach((relName, idx) => {
+      champToIdx[relName] = idx + 1;
+    });
+
+    // 5) champEdges:  길이 totalNodes인 배열, 각 인덱스마다 그 챔피언(인덱스)에 연결된 관계(엣지 문자열)을 담는다.
+    const newEdges: Record<number, string>[] = Object.keys(champToIdx).map(
+      (champName) => {
+        const rels = champ.get(champName)?.relation || {};
+        const mapping: Record<number, string> = {};
+        Object.entries(rels).forEach(([targetName, desc]) => {
+          const idx = champToIdx[targetName];
+          if (idx !== undefined) {
+            mapping[idx] = desc;
+          }
+        });
+        return mapping;
+      }
+    );
+    setChampEdges(newEdges);
+
+    // 6) 만약 이전에 돌리던 애니메이션 interval이 있다면 지워준다.
+    if (animationIntervalRef.current) {
+      clearInterval(animationIntervalRef.current);
+      animationIntervalRef.current = null;
+    }
+
+    // 7) (선택된 champion이 바뀌면) 호버 상태 초기화
+    setHoveredChampion(-1);
+  }, [champ, champion, graphViewWidth]);
+
+  // ──────────────▶ [B] “좌표&속도(state)가 준비되면 애니메이션을 돌린다”
+  useEffect(() => {
+    if (
+      champNodesCoords.length > 0 &&
+      nodesVelocity.length > 0 &&
+      hoveredChampion === -1 &&
+      !animationIntervalRef.current
+    ) {
+      // 속도가 (0,0)으로만 돼 있으면 무작위로 다시 채워준다
+      if (nodesVelocity.every((v) => v.x === 0 && v.y === 0)) {
+        setNodesVelocity((prev) =>
+          prev.map(() => ({ x: Math.random() * 8 - 4, y: Math.random() * 8 - 4 }))
+        );
+      }
+      animationIntervalRef.current = setInterval(() => {
+        moveAnywhere();
+        changeVelocity();
+      }, 100);
+    }
+
+    // 언마운트되거나 dependency가 바뀔 때 interval 정리
+    return () => {
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
+      }
+    };
+  }, [champNodesCoords, nodesVelocity, hoveredChampion, moveAnywhere, changeVelocity]);
+
+  // ──────────────▶ [C] 호버(마우스 엔터/리브) 시 노드 고정 처리
+  const handleMouseEnter = useCallback((index: number) => {
+    if (animationIntervalRef.current) {
+      clearInterval(animationIntervalRef.current);
+      animationIntervalRef.current = null;
+    }
+    setNodesVelocity((prev) => prev.map(() => ({ x: 0, y: 0 })));
+    setHoveredChampion(index);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoveredChampion(-1);
+    if (
+      champNodesCoords.length > 0 &&
+      nodesVelocity.length > 0 &&
+      !animationIntervalRef.current
+    ) {
+      setNodesVelocity((prev) =>
+        prev.map(() => ({ x: Math.random() * 8 - 4, y: Math.random() * 8 - 4 }))
+      );
+      animationIntervalRef.current = setInterval(() => {
+        moveAnywhere();
+        changeVelocity();
+      }, 100);
+    }
+  }, [champNodesCoords, nodesVelocity, moveAnywhere, changeVelocity]);
+
+  // ──────────────▶ [D] 화면 크기(리사이즈) 감지해서 graphViewWidth 상태 업데이트
+  useEffect(() => {
+    const graphView = graphViewRef.current;
+    if (!graphView) return;
+
+    setGraphViewWidth(graphView.offsetWidth);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const ent of entries) {
+        setGraphViewWidth(ent.contentRect.width);
+      }
+    });
+    resizeObserver.observe(graphView);
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // ──────────────▶ [E] canvas에 엣지를 그리는 함수 (hoveredChampion이 바뀔 때마다 다시 그린다)
+  const drawEdges = useCallback(() => {
+    const graphView = graphViewRef.current;
+    if (!graphView || champNodesCoords.length === 0) return null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = graphView.offsetWidth;
+    canvas.height = graphView.offsetHeight;
+    canvas.style.position = "absolute";
+    canvas.style.top = "0";
+    canvas.style.left = "0";
+    canvas.style.zIndex = "-1";
+    canvas.style.pointerEvents = "none";
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const nodeSize = 80;
+    const offset = nodeSize / 2;
+
+    if (hoveredChampion !== -1 && champEdges[hoveredChampion]) {
+      Object.entries(champEdges[hoveredChampion]).forEach(
+        ([targetIdxStr, text]) => {
+          const targetIdx = Number(targetIdxStr);
+          const start = champNodesCoords[hoveredChampion];
+          const end = champNodesCoords[targetIdx];
+          if (!start || !end) return;
+
+          ctx.beginPath();
+          ctx.moveTo(start.x + offset, start.y + offset);
+          ctx.lineTo(end.x + offset, end.y + offset);
+          ctx.strokeStyle = "rgba(255,255,255,0.5)";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // 엣지 라벨(관계 설명)
+          ctx.font = "12px Arial";
+          const textWidth = ctx.measureText(text).width;
+          const padding = 4;
+          const cx = end.x + offset;
+          const cy = end.y + offset - 42;
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          ctx.fillRect(cx - textWidth / 2 - padding, cy - 24, textWidth + padding * 2, 20);
+          ctx.fillStyle = "white";
+          ctx.textAlign = "center";
+          ctx.fillText(text, cx, cy - 10);
+        }
+      );
+    }
+
+    return canvas;
+  }, [champEdges, champNodesCoords, hoveredChampion]);
+
+  // ──────────────▶ [F] drawEdges가 바뀔 때마다(hoveredChampion or champEdges or coords 변경 시) 캔버스 업데이트
+  useEffect(() => {
+    const graphView = graphViewRef.current;
+    const canvas = drawEdges();
+    if (canvas && graphView) {
+      const old = graphView.querySelector("canvas");
+      if (old) old.remove();
+      graphView.appendChild(canvas);
+    }
+  }, [drawEdges]);
+
+  return (
+    <div ref={graphViewRef} className={realGraphView}>
+      {/* 인덱스 0번: 선택된 챔피언 자신 */}
+      <ChampNode
+        index={0}
+        ref={champNodeRef}
+        champ={champ}
+        champion={champion}
+        nodeCoords={champNodesCoords[0]}
+        onMouseEnter={() => handleMouseEnter(0)}
+        onMouseLeave={handleMouseLeave}
+      />
+
+      {/* 그 외: relation으로 연결된 챔피언들 */}
+      {Object.keys(champ.get(champion)?.relation || {}).map(
+        (relChampName, idx) => (
+          <ChampNode
+            key={idx + 1}
+            index={idx + 1}
+            ref={champNodeRef}
+            champ={champ}
+            champion={relChampName}
+            nodeCoords={champNodesCoords[idx + 1]}
+            onMouseEnter={() => handleMouseEnter(idx + 1)}
+            onMouseLeave={handleMouseLeave}
+          />
+        )
+      )}
+    </div>
+  );
 }
