@@ -1,12 +1,13 @@
 "use client";
 
 // import { getChampions } from "@/app/api/data/route";
-import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
+import { useEffect, useState } from "react";
+
+import type { ChampionData, ChampionMap } from "../../types/champion";
 import ChampSelection from "../ChampSelection/ChampSelection";
 import GraphView from "../GraphView/GraphView";
 import { lolChampGraph } from "./LOLChampGraph.css";
-import type { ChampionMap, ChampionData } from "../../types/champion";
 
 function objectToMap(obj: ChampionMap | null): Map<string, ChampionData> {
     if (!obj) return new Map();

@@ -1,7 +1,8 @@
 // import Image from "next/image";
-import { champList, champListItem } from "./ChampList.css";
 import type { MouseEvent } from "react";
+
 import type { ChampionData } from "../../types/champion";
+import { champList, champListItem } from "./ChampList.css";
 
 interface ChampListItemProps {
     id: string;
