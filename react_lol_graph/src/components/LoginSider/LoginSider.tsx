@@ -1,5 +1,5 @@
 import Account from "../Account/Account";
-import LoginForm from "../LoginForm/LoginForm";
+import LoginFormAndQRCode from "../LoginFormAndQRCode/LoginFormAndQRCode";
 import Logo from "../Logo/Logo";
 import PolicyDesc from "../PolicyDesc/PolicyDesc";
 import { loginSider } from "./LoginSider.css";
@@ -8,7 +8,7 @@ export default function LoginSider() {
     return (
         <div className={loginSider}>
             <Logo />
-            <LoginForm />
+            <LoginFormAndQRCode />
             <Account />
             <PolicyDesc />
         </div>
